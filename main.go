@@ -179,6 +179,9 @@ func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 func main() {
 	flag.Parse()
 
+	if *username == "" || *password == "" {
+		log.Fatal("Auth: Username/Password not provided!")
+	}
 	jenkins := &Jenkins {
 		username: 	*username,
 		token: 		*password,
