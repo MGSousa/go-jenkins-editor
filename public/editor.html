@@ -1,0 +1,150 @@
+<!doctype html>
+
+<title>KK Pipeline Editor</title>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+<link rel="stylesheet" href="/lib/codemirror.css">
+<link rel="stylesheet" href="/theme/material.css">
+<link rel="stylesheet" href="/theme/material-darker.css">
+<link rel="stylesheet" href="/theme/material-palenight.css">
+<link rel="stylesheet" href="/theme/material-ocean.css">
+<link rel="stylesheet" href="/theme/oceanic-next.css">
+<link rel="stylesheet" href="/theme/paraiso-dark.css">
+<link rel="stylesheet" href="/theme/yonce.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="/lib/codemirror.js"></script>
+<script src="/mode/groovy/groovy.js"></script>
+<script src="/addon/selection/active-line.js"></script>
+<script src="/addon/edit/matchbrackets.js"></script>
+<style>
+    .CodeMirror {
+        border: 1px solid black;
+        font-size: 13px;
+        height: 600px;
+    }
+</style>
+
+<div style="text-align: center;">
+    <h2>Jenkins Pipelines</h2>
+    <h3>
+        <i style="color: #aaa;" id="pipeline">
+            <a href="{{ dashboard }}" target="_blank">{{ name }}</a>
+        </i>
+    </h3>
+</div>
+
+<div style="padding: 20px;">
+    <textarea name="code" id="code">{{ code }}</textarea>
+    <div class="progress" id="loader" style="display: none;">
+        <div class="indeterminate orange darken-1"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row" style="padding: 20px;">
+        <div class="input-field col s12 m5">
+            <select id="select_pipeline">
+            </select>
+            <label>Pipeline:</label>
+        </div>
+        <div class="input-field col s12 m5">
+            <select onchange="selectTheme()" id="theme">
+                <option selected>material</option>
+                <option>material-darker</option>
+                <option>material-palenight</option>
+                <option>material-ocean</option>
+                <option>oceanic-next</option>
+                <option>paraiso-dark</option>
+                <option>yonce</option>
+            </select>
+            <label>Theme:</label>
+        </div>
+        <div class="col s12 m2">
+            <button id="save" type="button" class="waves-effect waves-light btn-large">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="fixed-action-btn direction-top">
+    <a id="menu" class="waves-effect waves-light btn btn-floating">OK</a>
+</div>
+<div class="tap-target green" data-target="menu">
+    <div class="tap-target-content">
+        <h5 id="response_title"></h5>
+        <p id="response_msg"></p>
+    </div>
+</div>
+
+<script>
+    var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+        lineNumbers: true,
+        styleActiveLine: true,
+        matchBrackets: true
+    });
+
+    $(document).ready(function($) {
+        let obj = "{{pipelines}}".split(",");
+        if (obj.length) {
+            for (let c in obj) {
+                if (obj[c] !== "") {
+                    let o = new Option(obj[c], obj[c]);
+                    $(o).html(obj[c]);
+                    $("#select_pipeline").append(o);
+                }
+            }
+        }
+        let url = window.location.href.split("/");
+        $("#select_pipeline").val(url[url.length-1]);
+
+        $('.tap-target').tapTarget();
+        $('select').formSelect();
+
+        $('#select_pipeline').on('change', function () {
+            window.location.href = "http://" + window.location.host + "/pipeline/" + $(this).val()
+        });
+
+        $('#save').on('click', function () {
+            $('#loader').show();
+            $.ajax({
+                url: "/pipeline/{{name}}",
+                method: "POST",
+                data: {
+                    content: JSON.stringify(editor.getValue())
+                },
+                success: (res) => {
+                    setTimeout(() => {
+                        $('#loader').hide();
+                        if (res.status) {
+                            $('.tap-target').tapTarget('open');
+                            $('#response_title').text(res.title);
+                            $('#response_msg').html(res.message);
+                        }
+                        console.log(res.message)
+                    }, 1000);
+                }
+            });
+        });
+    })
+
+    var input = document.getElementById("theme");
+    let choice = (location.hash && location.hash.slice(1)) ||
+        (document.location.search &&
+            decodeURIComponent(document.location.search.slice(1)));
+    if (choice) {
+        input.value = choice;
+        editor.setOption("theme", choice);
+    }
+    CodeMirror.on(window, "hashchange", function() {
+        let theme = location.hash.slice(1);
+        if (theme) {
+            input.value = theme; selectTheme();
+        }
+    });
+
+    function selectTheme() {
+        let theme = input.options[input.selectedIndex].textContent;
+        editor.setOption("theme", theme);
+        location.hash = "#" + theme;
+    }
+</script>
