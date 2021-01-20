@@ -1,4 +1,8 @@
 project_name: go-jenkins-editor
+
+release:
+  prerelease: auto
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -14,3 +18,5 @@ archives:
   - format: binary
 checksum:
   disable: true
+snapshot:
+  name_template: "{{ .Tag }}-next"

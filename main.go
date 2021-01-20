@@ -20,6 +20,7 @@ var (
 	username 	= flag.String("username", "", "Jenkins Username")
 	password 	= flag.String("password", "", "Jenkins Password")
 	cacheProv 	= flag.String("cacheProvider", "redis", "Internal Cache Provider (redis)")
+	jobsPrefix	string
 )
 
 type Jenkins struct {
@@ -178,6 +179,7 @@ func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 
 func main() {
 	flag.Parse()
+	flag.StringVar(&jobsPrefix, "jobsPrefix", "", "Custom Jobs prefix to be displayed only")
 
 	if *username == "" || *password == "" {
 		log.Fatal("Auth: Username/Password not provided!")

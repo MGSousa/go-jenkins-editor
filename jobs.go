@@ -21,7 +21,11 @@ type (
 // Stringify
 func (jobs *Jobs) Stringify() (allJobs string) {
 	for i := range jobs.All {
-		if strings.HasPrefix(jobs.All[i].Name, "kk-") {
+		if jobsPrefix != "" {
+			if strings.HasPrefix(jobs.All[i].Name, jobsPrefix) {
+				allJobs += fmt.Sprintf("%s,", jobs.All[i].Name)
+			}
+		} else {
 			allJobs += fmt.Sprintf("%s,", jobs.All[i].Name)
 		}
 	}

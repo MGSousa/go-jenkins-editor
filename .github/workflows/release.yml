@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches-ignore:
-      - '**'
+    branches:
+      - master
 
 jobs:
   goreleaser:
