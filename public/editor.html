@@ -69,7 +69,7 @@
 <div class="fixed-action-btn direction-top">
     <a id="menu" class="waves-effect waves-light btn btn-floating">OK</a>
 </div>
-<div class="tap-target green" data-target="menu">
+<div class="tap-target blue" data-target="menu">
     <div class="tap-target-content">
         <h5 id="response_title"></h5>
         <p id="response_msg"></p>
@@ -99,6 +99,17 @@
 
         $('.tap-target').tapTarget();
         $('select').formSelect();
+
+        if ($('#code').text() === "") {
+            $('#save').prop("disabled", true);
+
+            $('.tap-target')
+                .removeClass("blue")
+                .addClass("red")
+                .tapTarget('open');
+            $('#response_title').text("Error");
+            $('#response_msg').html("There is no Pipeline defined!");
+        }
 
         $('#select_pipeline').on('change', function () {
             window.location.href = "http://" + window.location.host + "/pipeline/" + $(this).val()

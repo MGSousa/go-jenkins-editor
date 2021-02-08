@@ -132,16 +132,21 @@ func (j *Jenkins) GetPipeline(name string) (code string) {
 		log.Errorln(err)
 	}
 
-	j.pipeline = name
-	code = doc.SelectElement("flow-definition").
-		SelectElement("definition").
-		SelectElement("script").
-		InnerText()
+	if baseElm := doc.SelectElement("flow-definition"); baseElm != nil {
+		j.pipeline = name
+		code = doc.SelectElement("flow-definition").
+			SelectElement("definition").
+			SelectElement("script").
+			InnerText()
 
-	if _, err := j.cache.Set(fmt.Sprintf("%s-xml", name), ConcatBytes(rawDoc, ""));
-	err != nil {
-		log.Fatalf("Cannot save XML: %s", err)
+		if _, err := j.cache.Set(fmt.Sprintf("%s-xml", name), ConcatBytes(rawDoc, ""));
+			err != nil {
+			log.Fatalf("Cannot save XML: %s", err)
+		}
+	} else {
+		log.Warnf("Job [%s] is not of type Pipeline", name)
 	}
+
 	return
 }
 
