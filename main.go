@@ -183,8 +183,8 @@ func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 }
 
 func main() {
-	flag.Parse()
 	flag.StringVar(&jobsPrefix, "jobsPrefix", "", "Custom Jobs prefix to be displayed only")
+	flag.Parse()
 
 	if *username == "" || *password == "" {
 		log.Fatal("Auth: Username/Password not provided!")
