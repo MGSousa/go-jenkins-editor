@@ -25,6 +25,7 @@ func Normalize(content string) string {
 	content = strings.TrimSuffix(content, "\"")
 
 	content = strings.ReplaceAll(content, "\\n", "\n")
+	content = strings.ReplaceAll(content, "\\\n", "\\n")
 	content = strings.ReplaceAll(content, "\\t", "\t")
 	content = strings.ReplaceAll(content, "\\\"", "\"")
 	content = strings.ReplaceAll(content, "\\\\", "\\")
