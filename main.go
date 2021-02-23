@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/MGSousa/go-generator"
@@ -10,6 +11,7 @@ import (
 	"github.com/kataras/iris/v12"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"strings"
 )
@@ -103,6 +105,29 @@ func (j *Jenkins) Server() {
 		Method: "POST",
 		Path:   "/pipeline/{pipeline:string}",
 	})
+
+	server.Register(generator.Routes {
+		Fn: func(ctx iris.Context) {
+			if content := ctx.FormValue("content"); content != "" {
+				if res, _ := j.ValidatePipeline(Normalize(content, false)); res != "" {
+					if strings.TrimSpace(res) != "Jenkinsfile successfully validated." {
+						ctx.JSON(iris.Map{
+							"status":  true,
+							"message": res,
+						})
+					} else {
+						ctx.JSON(iris.Map{
+							"status": false,
+							"message": "No errors",
+						})
+					}
+					return
+				}
+			}
+		},
+		Method: "POST",
+		Path:   "/pipeline/checker",
+	})
 	server.HttpPort = *httpPort
 	server.Serve()
 }
@@ -154,7 +179,14 @@ func (j *Jenkins) GetPipeline(name string) (code string) {
 func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 	var xml string
 	if xml, err = j.cache.Get(fmt.Sprintf("%s-xml", name)); xml != "" {
-		xmlStr := ConcatBytes([]byte(xml), Normalize(content))
+		xmlStr := ConcatBytes([]byte(xml), Normalize(content, true))
+
+		// validate and check for errors on save
+		if res, _ := j.ValidatePipeline(Normalize(content, false)); res != "" {
+			if strings.TrimSpace(res) != "Jenkinsfile successfully validated." {
+				return errors.New(res)
+			}
+		}
 
 		req, err := http.NewRequest("POST",
 			fmt.Sprintf("%s/job/%s/config.xml/api/json", *jenkinsUrl, name),
@@ -176,10 +208,43 @@ func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 			log.Warningln(job.Status, err)
 			return err
 		}
-
-		log.Infoln(job.Status)
 	}
 	return err
+}
+
+// ValidatePipeline
+func (j *Jenkins) ValidatePipeline(content string) (string, error) {
+	b := new(bytes.Buffer)
+	w := multipart.NewWriter(b)
+	err := w.WriteField("jenkinsfile", content)
+	if err != nil {
+		log.Errorln(err)
+		return "", err
+	}
+	_ = w.Close()
+
+	req, err := http.NewRequest("POST",
+		fmt.Sprintf("%s/pipeline-model-converter/validate", *jenkinsUrl), b)
+	if err != nil {
+		log.Errorln(err)
+		return "", err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	req.SetBasicAuth(j.username, j.token)
+	job, err := j.request(req)
+	if err != nil {
+		log.Errorln(err)
+		return "", err
+	}
+	defer job.Body.Close()
+
+	result, err := ioutil.ReadAll(job.Body)
+	if err != nil {
+		log.Warningln(job.Status, err)
+		return "", err
+	}
+	return string(result), nil
 }
 
 func main() {

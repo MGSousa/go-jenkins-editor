@@ -11,12 +11,14 @@
 <link rel="stylesheet" href="/theme/oceanic-next.css">
 <link rel="stylesheet" href="/theme/paraiso-dark.css">
 <link rel="stylesheet" href="/theme/yonce.css">
+<link rel="stylesheet" href="/addon/lint/lint.css">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script src="/lib/codemirror.js"></script>
 <script src="/mode/groovy/groovy.js"></script>
 <script src="/addon/selection/active-line.js"></script>
 <script src="/addon/edit/matchbrackets.js"></script>
+<script src="/addon/lint/lint.js"></script>
 <style>
     .CodeMirror {
         border: 1px solid black;
@@ -43,12 +45,16 @@
 
 <div class="container">
     <div class="row" style="padding: 20px;">
-        <div class="input-field col s12 m5">
+        <div class="col s12 m2">
+            <button id="check" type="button" class="waves-effect waves-light btn">Check</button>
+            <div id="check-result" style="display: none;">All Good!</div>
+        </div>
+        <div class="input-field col s12 m4">
             <select id="select_pipeline">
             </select>
             <label>Pipeline:</label>
         </div>
-        <div class="input-field col s12 m5">
+        <div class="input-field col s12 m4">
             <select onchange="selectTheme()" id="theme">
                 <option selected>material</option>
                 <option>material-darker</option>
@@ -77,13 +83,29 @@
 </div>
 
 <script>
+    var linePosition, colPosition = 0
+    var msgErr = ""
+    CodeMirror.registerHelper("lint", "groovy", function() {
+        var found = [];
+        found.push({
+            from: CodeMirror.Pos(linePosition-1, colPosition),
+            to: CodeMirror.Pos(linePosition-1, colPosition),
+            message: msgErr
+        })
+        return found;
+    });
+
     var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
         lineNumbers: true,
         styleActiveLine: true,
-        matchBrackets: true
+        matchBrackets: true,
+        mode: "text/x-groovy",
+        gutters: ["CodeMirror-lint-markers"],
+        lint: { lintOnChange: false }
     });
 
     $(document).ready(function($) {
+        let checkResult = $('#check-result');
         let obj = "{{pipelines}}".split(",");
         if (obj.length) {
             for (let c in obj) {
@@ -115,6 +137,36 @@
             window.location.href = "http://" + window.location.host + "/pipeline/" + $(this).val()
         });
 
+        $('#check').on('click', function () {
+            $.ajax({
+                url: "/pipeline/checker",
+                method: "POST",
+                data: {
+                    content: JSON.stringify(editor.getValue())
+                },
+                success: (res) => {
+                    if (res.status) {
+                        let details = res.message.split("@")[1].split(",")
+                        linePosition = parseInt(details[0].match(/\d+/)[0])
+                        colPosition = parseInt(details[1].match(/\d+/)[0])
+                        msgErr = res.message
+                        checkResult.hide()
+                        editor.performLint()
+                    } else {
+                        checkResult.show()
+                        setTimeout(() => {
+                            checkResult.hide()
+                        }, 3000);
+                        linePosition = 0
+                        colPosition = 0
+                        msgErr = ""
+                        console.log(linePosition)
+                        editor.performLint()
+                    }
+                }
+            });
+        });
+
         $('#save').on('click', function () {
             $('#loader').show();
             $.ajax({
@@ -127,11 +179,13 @@
                     setTimeout(() => {
                         $('#loader').hide();
                         if (res.status) {
-                            $('.tap-target').tapTarget('open');
+                            $('.tap-target')
+                                .removeClass("red")
+                                .addClass("blue")
+                                .tapTarget('open');
                             $('#response_title').text(res.title);
                             $('#response_msg').html(res.message);
                         }
-                        console.log(res.message)
                     }, 1000);
                 }
             });
