@@ -10,6 +10,7 @@ import (
 	"github.com/antchfx/xmlquery"
 	"github.com/kataras/iris/v12"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -36,17 +37,11 @@ type Jenkins struct {
 	// pipeline name
 	pipeline 		string
 
+	// pipeline type
+	ctype			string
+
 	// jobs API
 	Jobs 			Jobs
-}
-
-// request
-func (j *Jenkins) request(req *http.Request) (job *http.Response, err error) {
-	client := &http.Client{}
-	if job, err = client.Do(req); err != nil {
-		log.Errorln(err)
-	}
-	return
 }
 
 // server
@@ -76,6 +71,7 @@ func (j *Jenkins) Server() {
 			ctx.ViewData("pipelines", j.Jobs.Stringify())
 			ctx.ViewData("name", j.pipeline)
 			ctx.ViewData("code", code)
+			ctx.ViewData("type", j.ctype)
 			ctx.ViewData("dashboard",
 				fmt.Sprintf("%s/job/%s", *jenkinsUrl, j.pipeline))
 
@@ -134,20 +130,8 @@ func (j *Jenkins) Server() {
 
 // GetPipeline
 func (j *Jenkins) GetPipeline(name string) (code string) {
-	req, err := http.NewRequest("GET",
-		fmt.Sprintf("%s/job/%s/config.xml/api/json", *jenkinsUrl, name), nil)
-	if err != nil {
-		log.Errorln(err)
-	}
-	req.SetBasicAuth(j.username, j.token)
-	job, _ := j.request(req)
-	defer job.Body.Close()
-
-	rawDoc, err := ioutil.ReadAll(job.Body)
-	if err != nil {
-		log.Errorln(err)
-		return
-	}
+	rawDoc, _ := j.request(
+		"GET", fmt.Sprintf("%s/job/%s/config.xml/api/json", *jenkinsUrl, name), nil)
 
 	rd := bytes.ReplaceAll(rawDoc, []byte("version='1.1'"), []byte("version='1.0'"))
 	rd = bytes.ReplaceAll(rd, []byte("version=\"1.1\""), []byte("version=\"1.0\""))
@@ -159,7 +143,8 @@ func (j *Jenkins) GetPipeline(name string) (code string) {
 
 	if baseElm := doc.SelectElement("flow-definition"); baseElm != nil {
 		j.pipeline = name
-		code = doc.SelectElement("flow-definition").
+		j.ctype = "groovy"
+		code = baseElm.
 			SelectElement("definition").
 			SelectElement("script").
 			InnerText()
@@ -169,7 +154,17 @@ func (j *Jenkins) GetPipeline(name string) (code string) {
 			log.Fatalf("Cannot save XML: %s", err)
 		}
 	} else {
-		log.Warnf("Job [%s] is not of type Pipeline", name)
+		if baseShellElm := doc.SelectElement("project"); baseShellElm != nil {
+			j.pipeline = name
+			j.ctype = "sh"
+			code = baseShellElm.
+				SelectElement("builders").
+				SelectElement("hudson.tasks.Shell").
+				SelectElement("command").
+				InnerText()
+		} else {
+			log.Warnf("Job [%s] is not of type Pipeline! Ignoring diplay...", name)
+		}
 	}
 
 	return
@@ -188,24 +183,11 @@ func (j *Jenkins) UpdatePipeline(name, content string) (err error) {
 			}
 		}
 
-		req, err := http.NewRequest("POST",
+		// update pipeline
+		if _, err := j.request(
+			"POST",
 			fmt.Sprintf("%s/job/%s/config.xml/api/json", *jenkinsUrl, name),
-			strings.NewReader(xmlStr))
-		if err != nil {
-			log.Errorln(err)
-			return err
-		}
-		req.SetBasicAuth(j.username, j.token)
-		job, err := j.request(req)
-		if err != nil {
-			log.Errorln(err)
-			return err
-		}
-		defer job.Body.Close()
-
-		_, err = ioutil.ReadAll(job.Body)
-		if err != nil {
-			log.Warningln(job.Status, err)
+			strings.NewReader(xmlStr)); err != nil {
 			return err
 		}
 	}
@@ -223,27 +205,8 @@ func (j *Jenkins) ValidatePipeline(content string) (string, error) {
 	}
 	_ = w.Close()
 
-	req, err := http.NewRequest("POST",
-		fmt.Sprintf("%s/pipeline-model-converter/validate", *jenkinsUrl), b)
-	if err != nil {
-		log.Errorln(err)
-		return "", err
-	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
-
-	req.SetBasicAuth(j.username, j.token)
-	job, err := j.request(req)
-	if err != nil {
-		log.Errorln(err)
-		return "", err
-	}
-	defer job.Body.Close()
-
-	result, err := ioutil.ReadAll(job.Body)
-	if err != nil {
-		log.Warningln(job.Status, err)
-		return "", err
-	}
+	result, err := j.request(
+		"POST", fmt.Sprintf("%s/pipeline-model-converter/validate", *jenkinsUrl), b, w)
 	return string(result), nil
 }
 
@@ -259,4 +222,32 @@ func main() {
 		token: 		*password,
 	}
 	jenkins.Server()
+}
+
+// request
+func (j *Jenkins) request(method, url string, body io.Reader, w ...*multipart.Writer) ([]byte, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		log.Errorln(err)
+		return nil, err
+	}
+	if len(w) > 0 {
+		req.Header.Set("Content-Type", w[0].FormDataContentType())
+	}
+
+	req.SetBasicAuth(j.username, j.token)
+	client := &http.Client{}
+	job, err := client.Do(req)
+	if err != nil {
+		log.Errorln(err)
+		return nil, err
+	}
+	defer job.Body.Close()
+
+	response, err := ioutil.ReadAll(job.Body)
+	if err != nil {
+		log.Errorln(err)
+		return nil, err
+	}
+	return response, nil
 }

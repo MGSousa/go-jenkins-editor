@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
-	"net/http"
 	"strings"
 )
 
@@ -34,18 +32,9 @@ func (jobs *Jobs) Stringify() (allJobs string) {
 
 // getAllJobs
 func (j *Jenkins) getAllJobs() {
-	req, err := http.NewRequest("GET",
-		fmt.Sprintf("%s/api/json?tree=jobs[name]", *jenkinsUrl), nil)
+	jobs, err := j.request(
+		"GET", fmt.Sprintf("%s/api/json?tree=jobs[name]", *jenkinsUrl), nil)
 	if err != nil {
-		log.Errorln(err)
-	}
-	req.SetBasicAuth(j.username, j.token)
-	res, _ := j.request(req)
-	defer res.Body.Close()
-
-	jobs, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Errorln(err)
 		return
 	}
 	if err := json.Unmarshal(jobs, &j.Jobs); err != nil {
