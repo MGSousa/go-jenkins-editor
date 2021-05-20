@@ -8,15 +8,15 @@ import (
 )
 
 type (
-	Jobs	struct {
-		All 	Names `json:"jobs"`
+	Jobs struct {
+		All Names `json:"jobs"`
 	}
 	Names []struct {
-		Name  	string `json:"name"`
+		Name string `json:"name"`
 	}
 )
 
-// Stringify
+// Stringify stringify jobs names
 func (jobs *Jobs) Stringify() (allJobs string) {
 	for i := range jobs.All {
 		if jobsPrefix != "" {
@@ -30,14 +30,14 @@ func (jobs *Jobs) Stringify() (allJobs string) {
 	return
 }
 
-// getAllJobs
+// getAllJobs get all jobs
 func (j *Jenkins) getAllJobs() {
 	jobs, err := j.request(
 		"GET", fmt.Sprintf("%s/api/json?tree=jobs[name]", *jenkinsUrl), nil)
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
 	if err := json.Unmarshal(jobs, &j.Jobs); err != nil {
-		log.Errorln(err)
+		log.Fatal(err)
 	}
 }

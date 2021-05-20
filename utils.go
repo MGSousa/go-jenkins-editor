@@ -9,7 +9,7 @@ import (
 
 var (
 	firstStr = "<script>"
-	lastStr = "</script>"
+	lastStr  = "</script>"
 )
 
 // ConcatBytes

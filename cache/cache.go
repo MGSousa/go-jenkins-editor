@@ -17,8 +17,7 @@ type (
 	}
 )
 
-// @TODO: add more kv providers
-// Init internal cache
+// Init privides internal cache
 func (c *Cache) Init(provider string) {
 	switch provider {
 	case "redis":
@@ -30,9 +29,14 @@ func (c *Cache) Init(provider string) {
 			log.Fatalf("Redis: %s", err)
 		}
 	case "buntdb":
-	case "badger":
+		c.driver = &BuntDB{
+			Path: ":memory:",
+		}
+		if err := c.driver.connect(); err != nil {
+			log.Fatalf("BuntDB: %s", err)
+		}
 	default:
-		log.Warningln("Not implemented")
+		log.Warningf("Provider [%s] not implemented ", provider)
 	}
 }
 

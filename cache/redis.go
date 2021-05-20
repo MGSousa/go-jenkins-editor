@@ -5,18 +5,18 @@ import (
 )
 
 type Redis struct {
-	client 	*rd.Client
+	client *rd.Client
 
-	Address  string
-	DB 		 int
+	Address string
+	DB      int
 }
 
 // Connect to a new Redis instance
 func (r *Redis) connect() error {
 	if r.client == nil {
 		r.client = rd.NewClient(&rd.Options{
-			Addr:     r.Address,
-			DB:       r.DB,
+			Addr: r.Address,
+			DB:   r.DB,
 		})
 		// ping application
 		if _, err := r.client.Ping().Result(); err != nil {
