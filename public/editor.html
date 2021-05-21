@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
 <link rel="stylesheet" href="/lib/codemirror.css">
+<link rel="stylesheet" href="/lib/app.css">
 <link rel="stylesheet" href="/theme/material.css">
 <link rel="stylesheet" href="/theme/material-darker.css">
 <link rel="stylesheet" href="/theme/material-palenight.css">
@@ -24,15 +25,21 @@
     .CodeMirror {
         border: 1px solid black;
         font-size: 13px;
-        height: 600px;
+        height: 76vh;
+    }
+
+    body {
+        background: #f5f5f5;
+    }
+    .textarea_error {
+        border: 1px solid red;
     }
 </style>
 
-<div style="text-align: center;">
-    <h2>Jenkins Pipelines</h2>
+<div style="text-align: center; height: 40px;">
     <h3>
         <i style="color: #aaa;" id="pipeline">
-            <a href="{{ dashboard }}" target="_blank">{{ name }}</a>
+            Pipelines - <a href="{{ dashboard }}" target="_blank">{{ name }}</a>
         </i>
     </h3>
 </div>
@@ -44,8 +51,28 @@
     </div>
 </div>
 
+<div id="overlay">
+    <div class="overlay_text">
+        <div id="success" class="success-overlay d-flex">
+            <div class="success-icon">
+                <div class="success-icon__tip"></div>
+                <div class="success-icon__long"></div>
+            </div>
+        </div>
+        <div id="error" class="sa-error">
+            <div class="sa-error-x">
+                <div class="sa-error-left"></div>
+                <div class="sa-error-right"></div>
+            </div>
+            <div class="sa-error-placeholder"></div>
+            <div class="sa-error-fix"></div>
+        </div>
+        <p id="response_msg"></p>
+    </div>
+</div>
+
 <div class="container">
-    <div class="row" style="padding: 20px;">
+    <div class="row">
         <div class="col s12 m2">
             <button id="check" type="button" class="waves-effect waves-light btn">Check</button>
             <div id="check-result" style="display: none;">All Good!</div>
@@ -73,29 +100,30 @@
     </div>
 </div>
 
-<div class="fixed-action-btn direction-top">
-    <a id="menu" class="waves-effect waves-light btn btn-floating">OK</a>
-</div>
-<div class="tap-target blue" data-target="menu">
-    <div class="tap-target-content">
-        <h5 id="response_title"></h5>
-        <p id="response_msg"></p>
-    </div>
-</div>
-
 <script>
     var linePosition, colPosition = 0
     var msgErr = ""
     var codeType = "{{type}}"
 
+    if (codeType === "") {
+        $('#overlay').show();
+        $('#error').show();
+        $('#response_msg').text("Invalid pipeline")
+
+        setTimeout(() => {
+            $('#overlay').hide()
+            $('#error').hide();
+        }, 3000);
+    }
+
     CodeMirror.registerHelper("lint", "groovy", function() {
-        var found = [];
+        let found = []
         found.push({
             from: CodeMirror.Pos(linePosition-1, colPosition),
             to: CodeMirror.Pos(linePosition-1, colPosition),
             message: msgErr
         })
-        return found;
+        return found
     });
 
     let objCode = {
@@ -112,42 +140,42 @@
         objCode.mode = "text/x-groovy"
     }
 
-    var editor = CodeMirror.fromTextArea(document.getElementById("code"), objCode);
+    var editor = CodeMirror.fromTextArea(document.getElementById("code"), objCode)
 
     $(document).ready(function($) {
-        let checkResult = $('#check-result');
-        let obj = "{{pipelines}}".split(",");
+        const checkResult = $('#check-result');
+        const selectPipeline = $('#select_pipeline');
+        const save = $('#save');
+        const loader = $('#loader');
+        const check = $('#check');
+
+        let obj = "{{pipelines}}".split(",")
         if (obj.length) {
             for (let c in obj) {
                 if (obj[c] !== "") {
-                    let o = new Option(obj[c], obj[c]);
-                    $(o).html(obj[c]);
-                    $("#select_pipeline").append(o);
+                    let o = new Option(obj[c], obj[c])
+                    $(o).html(obj[c])
+                    $("#select_pipeline").append(o)
                 }
             }
         }
-        let url = window.location.href.split("/");
-        $("#select_pipeline").val(url[url.length-1]);
 
-        $('.tap-target').tapTarget();
+        selectPipeline.val(getUrl(true))
+
         $('select').formSelect();
 
         if ($('#code').text() === "") {
-            $('#save').prop("disabled", true);
-
-            $('.tap-target')
-                .removeClass("blue")
-                .addClass("red")
-                .tapTarget('open');
-            $('#response_title').text("Error");
-            $('#response_msg').html("There is no Pipeline defined!");
+            save.prop("disabled", true)
         }
 
-        $('#select_pipeline').on('change', function () {
+        selectPipeline.on('change', function () {
+            let theme = getUrl()
             window.location.href = "http://" + window.location.host + "/pipeline/" + $(this).val()
+                + (theme ? "#" + theme : "")
         });
 
-        $('#check').on('click', function () {
+        check.on('click', function () {
+            loader.show()
             $.ajax({
                 url: "/pipeline/checker",
                 method: "POST",
@@ -155,30 +183,37 @@
                     content: JSON.stringify(editor.getValue())
                 },
                 success: (res) => {
+                    loader.hide()
                     if (res.status) {
-                        let details = res.message.split("@")[1].split(",")
-                        linePosition = parseInt(details[0].match(/\d+/)[0])
-                        colPosition = parseInt(details[1].match(/\d+/)[0])
-                        msgErr = res.message
-                        checkResult.hide()
-                        editor.performLint()
-                    } else {
                         checkResult.show()
+                        $('.CodeMirror').removeClass('textarea_error')
+                        save.prop('disabled', false)
+
                         setTimeout(() => {
                             checkResult.hide()
                         }, 3000);
                         linePosition = 0
                         colPosition = 0
                         msgErr = ""
-                        console.log(linePosition)
                         editor.performLint()
+
+                    } else {
+                        let details = res.message.split("@")[1].split(",")
+                        linePosition = parseInt(details[0].match(/\d+/)[0])
+                        scrollToLine(linePosition)
+                        colPosition = parseInt(details[1].match(/\d+/)[0])
+                        msgErr = res.message
+                        checkResult.hide()
+                        editor.performLint()
+                        $('.CodeMirror').addClass('textarea_error')
+                        save.prop('disabled', true)
                     }
                 }
             });
         });
 
-        $('#save').on('click', function () {
-            $('#loader').show();
+        save.on('click', function () {
+            loader.show()
             $.ajax({
                 url: "/pipeline/{{name}}",
                 method: "POST",
@@ -186,17 +221,24 @@
                     content: JSON.stringify(editor.getValue())
                 },
                 success: (res) => {
-                    setTimeout(() => {
-                        $('#loader').hide();
-                        if (res.status) {
-                            $('.tap-target')
-                                .removeClass("red")
-                                .addClass("blue")
-                                .tapTarget('open');
-                            $('#response_title').text(res.title);
-                            $('#response_msg').html(res.message);
-                        }
-                    }, 1000);
+                    loader.hide()
+                    $('#overlay').show()
+                    $('#response_msg').text(res.message)
+
+                    if (res.status) {
+                        $('#success').show()
+                        setTimeout(() => {
+                            $('#overlay').hide()
+                            $('#success').hide()
+                        }, 2000);
+                    } else {
+                        $('#error').show()
+                        setTimeout(() => {
+                            $('#overlay').hide()
+                            $('#error').hide()
+                        }, 2000);
+                        check.trigger('click')
+                    }
                 }
             });
         });
@@ -205,21 +247,36 @@
     var input = document.getElementById("theme");
     let choice = (location.hash && location.hash.slice(1)) ||
         (document.location.search &&
-            decodeURIComponent(document.location.search.slice(1)));
+            decodeURIComponent(document.location.search.slice(1)))
     if (choice) {
         input.value = choice;
         editor.setOption("theme", choice);
     }
     CodeMirror.on(window, "hashchange", function() {
-        let theme = location.hash.slice(1);
+        let theme = location.hash.slice(1)
         if (theme) {
-            input.value = theme; selectTheme();
+            input.value = theme; selectTheme()
         }
     });
-
     function selectTheme() {
         let theme = input.options[input.selectedIndex].textContent;
-        editor.setOption("theme", theme);
-        location.hash = "#" + theme;
+        editor.setOption("theme", theme)
+        location.hash = "#" + theme
+    }
+
+    function scrollToLine(i) {
+        let top = editor.charCoords({line: i, ch: 0}, "local").top
+        let middleHeight = editor.getScrollerElement().offsetHeight / 2
+        editor.scrollTo(null, top - middleHeight - 5)
+    }
+
+    function getUrl(pipeline = false) {
+        let url = window.location.href.split("/")
+        let parts = url[url.length-1].split("#")
+        if (pipeline) {
+            return parts[0]
+        } else {
+            return parts[1]
+        }
     }
 </script>
