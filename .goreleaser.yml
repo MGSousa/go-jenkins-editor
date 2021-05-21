@@ -1,8 +1,5 @@
 project_name: go-jenkins-editor
 
-release:
-  prerelease: auto
-
 builds:
   - env:
       - CGO_ENABLED=0

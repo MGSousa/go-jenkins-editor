@@ -177,17 +177,16 @@ func (j *Jenkins) GetPipeline(name string) (code string) {
 		if _, err := j.cache.Set(fmt.Sprintf("%s-xml", name), ConcatBytes(rawDoc, "")); err != nil {
 			log.Fatalf("Cannot save XML: %s", err)
 		}
-	} else {
-		if baseShellElm := doc.SelectElement("project"); baseShellElm != nil {
-			j.pipeline.Type = "sh"
-			code = baseShellElm.
-				SelectElement("builders").
-				SelectElement("hudson.tasks.Shell").
-				SelectElement("command").
-				InnerText()
-		} else {
-			log.Warnf("Job [%s] is not of type Pipeline! Ignoring display...", name)
-		}
+	} else
+		if elm := doc.SelectElement("project"); elm != nil {
+			if shell := elm.SelectElement("builders").SelectElement("hudson.tasks.Shell");
+			shell != nil {
+				j.pipeline.Type = "sh"
+				code = shell.InnerText()
+			} else {
+				j.pipeline.Type = ""
+				log.Warnf("Job [%s] is not of type Shell/Groovy! Ignoring display...", name)
+			}
 	}
 
 	return
