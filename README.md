@@ -1,5 +1,6 @@
 # Jenkins Pipeline Editor
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/MGSousa/go-jenkins-editor)](https://goreportcard.com/report/github.com/MGSousa/go-jenkins-editor)
 ![Actions Status](https://github.com/MGSousa/go-jenkins-editor/workflows/Release/badge.svg)
 
 Editor for Jenkins declarative and scripted pipelines with Groovy and Shell highlighting

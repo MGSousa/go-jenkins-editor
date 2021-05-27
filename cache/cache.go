@@ -5,6 +5,7 @@ import (
 )
 
 type (
+	// Driver interface to implement
 	Driver interface {
 		connect() error
 		get(key string) (string, error)
@@ -12,6 +13,7 @@ type (
 		del(key string) (int64, error)
 	}
 
+	// Cache struct for type Driver
 	Cache struct {
 		driver Driver
 	}

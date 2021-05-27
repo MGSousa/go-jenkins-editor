@@ -4,7 +4,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-// kv cache registry BuntDB
+// BuntDB kv cache registry
 type BuntDB struct {
 	client *buntdb.DB
 

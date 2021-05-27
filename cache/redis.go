@@ -4,7 +4,7 @@ import (
 	rd "github.com/go-redis/redis"
 )
 
-// kv cache registry Redis
+// Redis kv cache registry
 type Redis struct {
 	client *rd.Client
 
