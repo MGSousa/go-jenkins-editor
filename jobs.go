@@ -8,10 +8,11 @@ import (
 )
 
 type (
+	// Jobs list retrieved from API
 	Jobs struct {
-		All Names `json:"jobs"`
+		All names `json:"jobs"`
 	}
-	Names []struct {
+	names []struct {
 		Name string `json:"name"`
 	}
 )
@@ -30,7 +31,7 @@ func (jobs *Jobs) Stringify() (allJobs string) {
 	return
 }
 
-// getAllJobs get all jobs
+// getAllJobs get all jobs from API
 func (j *Jenkins) getAllJobs() {
 	jobs, err := j.request(
 		"GET", fmt.Sprintf("%s/api/json?tree=jobs[name]", *jenkinsUrl), nil)
