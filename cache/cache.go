@@ -40,12 +40,12 @@ func (c *Cache) Init(provider string) {
 	}
 }
 
-// Set
+// Set insert new key in cache
 func (c *Cache) Set(key string, value interface{}) (string, error) {
 	return c.driver.set(key, value)
 }
 
-// Keys search for a key pattern
+// Get search for a key pattern
 func (c *Cache) Get(key string) (string, error) {
 	return c.driver.get(key)
 }

@@ -4,6 +4,7 @@ import (
 	rd "github.com/go-redis/redis"
 )
 
+// kv cache registry Redis
 type Redis struct {
 	client *rd.Client
 
@@ -11,7 +12,7 @@ type Redis struct {
 	DB      int
 }
 
-// Connect to a new Redis instance
+// connect to a new Redis instance
 func (r *Redis) connect() error {
 	if r.client == nil {
 		r.client = rd.NewClient(&rd.Options{
@@ -26,17 +27,14 @@ func (r *Redis) connect() error {
 	return nil
 }
 
-// Set
 func (r *Redis) set(key string, value interface{}) (string, error) {
 	return r.client.Set(key, value, 0).Result()
 }
 
-// Keys search for a key pattern
 func (r *Redis) get(key string) (string, error) {
 	return r.client.Get(key).Result()
 }
 
-// Del remove key from cache
 func (r *Redis) del(key string) (int64, error) {
 	return r.client.Del(key).Result()
 }
