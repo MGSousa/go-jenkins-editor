@@ -1,22 +1,22 @@
-FROM alpine
+FROM golang:alpine3.13 as build
 
-ARG JK_URL
-ARG JK_PORT
-ARG JK_USER
-ARG JK_PASS
-ARG JK_JOBSP
-
-ENV APP_ENV="production"
-ENV PORT=$JK_PORT
-ENV USR=$JK_USER
-ENV PWRD=$JK_PASS
-ENV URL=$JK_URL
-ENV PREFIX=$JK_JOBSP
+RUN apk add --no-cache curl git
 
 WORKDIR /app
 
-COPY ./dist/go-jenkins-editor_linux_amd64/go-jenkins-editor .
+COPY . ./
 
-CMD ["sh", "-c", "./go-jenkins-editor -port=$PORT -username=$USR -password=$PWRD -jenkinsUrl=$URL -jobsPrefix=$PREFIX"]
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-EXPOSE $PORT
+RUN curl -sL https://git.io/goreleaser | /bin/sh -s -- release --snapshot
+
+
+FROM alpine:3.13
+
+ENV APP_ENV="production"
+
+WORKDIR /app
+
+COPY --from=build /app/dist/go-jenkins-editor_linux_amd64/go-jenkins-editor ./
+
+ENTRYPOINT ["/app/go-jenkins-editor"]
