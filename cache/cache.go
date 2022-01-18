@@ -19,7 +19,7 @@ type (
 	}
 )
 
-// Init privides internal cache
+// Init provides internal cache
 func (c *Cache) Init(provider string) {
 	switch provider {
 	case "redis":

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -12,15 +12,15 @@ var (
 	lastStr  = "</script>"
 )
 
-// ConcatBytes concatenate bytes is specific order
-func ConcatBytes(b []byte, middle string) string {
+// concatBytes concatenate bytes is specific order
+func concatBytes(b []byte, middle string) string {
 	fResult := bytes.SplitAfter(b, []byte(firstStr))
 	lResult := bytes.SplitAfter(b, []byte(lastStr))
 	return fmt.Sprintf("%s%s%s%s", fResult[0], middle, lastStr, lResult[1])
 }
 
-// Normalize content from editor
-func Normalize(content string, escapeHtml bool) string {
+// normalize content from editor
+func normalize(content string, escapeHtml bool) string {
 	content = strings.TrimPrefix(strings.TrimSpace(content), "\"")
 	content = strings.TrimSuffix(content, "\"")
 
