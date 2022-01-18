@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -18,7 +18,7 @@ type (
 )
 
 // Stringify stringify jobs names
-func (jobs *Jobs) Stringify() (allJobs string) {
+func (jobs *Jobs) Stringify(jobsPrefix string) (allJobs string) {
 	for i := range jobs.All {
 		if jobsPrefix != "" {
 			if strings.HasPrefix(jobs.All[i].Name, jobsPrefix) {
@@ -33,8 +33,7 @@ func (jobs *Jobs) Stringify() (allJobs string) {
 
 // getAllJobs get all jobs from API
 func (j *Jenkins) getAllJobs() {
-	jobs, err := j.request(
-		"GET", fmt.Sprintf("%s/api/json?tree=jobs[name]", *jenkinsUrl), nil)
+	jobs, err := j.request("GET", "api/json?tree=jobs[name]", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
